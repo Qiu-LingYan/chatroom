@@ -37,7 +37,7 @@ class WebSocket {
         $pid = posix_getpid();
         $this->debug(["server: {$this->res_socket} started,pid: {$pid}"]);
 
-        // 服务，循环执行
+        // 服务，循环执行。
         while (true) {
             try {
                 $this->doServer();

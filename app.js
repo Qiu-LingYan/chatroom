@@ -1,5 +1,5 @@
 const ws = require('nodejs-websocket');
-const PORT = 3000
+const PORT = 3100
 
 //创建server,每次只要有用户连接，回调执行就会给用户创建一个connect对象
 const server = ws.createServer(connect => {

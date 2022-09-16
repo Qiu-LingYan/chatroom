@@ -1,27 +1,118 @@
-const ws = require('nodejs-websocket');
-const PORT = 3100
+'use strict';
 
-//创建server,每次只要有用户连接，回调执行就会给用户创建一个connect对象
-const server = ws.createServer(connect => {
-    console.log('用户连接成功');
-    //用户传来数据，触发text事件
-    connect.on('text', data => {
-        console.log(`接受到用户的数据:${data}`);
-        //接受到数据后给用户响应数据
-        connect.sendText(data);
-    });
+var usernamePage = document.querySelector('#username-page');
+var chatPage = document.querySelector('#chat-page');
+var usernameForm = document.querySelector('#usernameForm');
+var messageForm = document.querySelector('#messageForm');
+var messageInput = document.querySelector('#message');
+var messageArea = document.querySelector('#messageArea');
+var connectingElement = document.querySelector('.connecting');
 
-    //连接关闭触发close事件
-    connect.on('close',()=>{
-        console.log('连接断开');
-    });
+var stompClient = null;
+var username = null;
 
-    //注册error事件,用户端口后就会触发该异常
-    connect.on('error',()=>{
-        console.log('用户连接异常');
-    });
-});
+var colors = [
+    '#2196F3', '#32c787', '#00BCD4', '#ff5652',
+    '#ffc107', '#ff85af', '#FF9800', '#39bbb0'
+];
 
-server.listen(PORT, () => {
-    console.log('监听3000');
-});
+function connect(event) {
+    username = document.querySelector('#name').value.trim();
+
+    if(username) {
+        usernamePage.classList.add('hidden');
+        chatPage.classList.remove('hidden');
+
+        var socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, onConnected, onError);
+    }
+    event.preventDefault();
+}
+
+
+function onConnected() {
+    // Subscribe to the Public Topic
+    stompClient.subscribe('/topic/public', onMessageReceived);
+
+    // Tell your username to the server
+    stompClient.send("/app/chat.addUser",
+        {},
+        JSON.stringify({sender: username, type: 'JOIN'})
+    )
+
+    connectingElement.classList.add('hidden');
+}
+
+
+function onError(error) {
+    connectingElement.textContent = 'Could not connect to WebSocket server. Please refresh this page to try again!';
+    connectingElement.style.color = 'red';
+}
+
+
+function sendMessage(event) {
+    var messageContent = messageInput.value.trim();
+    if(messageContent && stompClient) {
+        var chatMessage = {
+            sender: username,
+            content: messageInput.value,
+            type: 'CHAT'
+        };
+        stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+        messageInput.value = '';
+    }
+    event.preventDefault();
+}
+
+
+function onMessageReceived(payload) {
+    var message = JSON.parse(payload.body);
+
+    var messageElement = document.createElement('li');
+
+    if(message.type === 'JOIN') {
+        messageElement.classList.add('event-message');
+        message.content = message.sender + ' joined!';
+    } else if (message.type === 'LEAVE') {
+        messageElement.classList.add('event-message');
+        message.content = message.sender + ' left!';
+    } else {
+        messageElement.classList.add('chat-message');
+
+        var avatarElement = document.createElement('i');
+        var avatarText = document.createTextNode(message.sender[0]);
+        avatarElement.appendChild(avatarText);
+        avatarElement.style['background-color'] = getAvatarColor(message.sender);
+
+        messageElement.appendChild(avatarElement);
+
+        var usernameElement = document.createElement('span');
+        var usernameText = document.createTextNode(message.sender);
+        usernameElement.appendChild(usernameText);
+        messageElement.appendChild(usernameElement);
+    }
+
+    var textElement = document.createElement('p');
+    var messageText = document.createTextNode(message.content);
+    textElement.appendChild(messageText);
+
+    messageElement.appendChild(textElement);
+
+    messageArea.appendChild(messageElement);
+    messageArea.scrollTop = messageArea.scrollHeight;
+}
+
+
+function getAvatarColor(messageSender) {
+    var hash = 0;
+    for (var i = 0; i < messageSender.length; i++) {
+        hash = 31 * hash + messageSender.charCodeAt(i);
+    }
+    var index = Math.abs(hash % colors.length);
+    return colors[index];
+}
+
+usernameForm.addEventListener('submit', connect, true)
+messageForm.addEventListener('submit', sendMessage, true)

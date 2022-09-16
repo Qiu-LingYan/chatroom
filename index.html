@@ -1,52 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-    <style>
-        div {
-            width: 200px;
-            height: 200px;
-            border: 1px solid #000;
-        }
-    </style>
-</head>
-<body>
-<input type="text" placeholder="请输入">
-<button>发送</button>
+<html>
+  <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+      <title>Spring Boot WebSocket Chat Application</title>
+      <link rel="stylesheet" href="/css/main.css" />
+  </head>
+  <body>
+    <noscript>
+      <h2>Sorry! Your browser doesn't support Javascript</h2>
+    </noscript>
 
-<!-- 显示内容 -->
-<div></div>
+    <div id="username-page">
+        <div class="username-page-container">
+            <h1 class="title">Type your username</h1>
+            <form id="usernameForm" name="usernameForm">
+                <div class="form-group">
+                    <input type="text" id="name" placeholder="Username" autocomplete="off" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="accent username-submit">Start Chatting</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<!-- websocket在浏览器的使用 H5提供了websocket的API-->
-<script>
-    let input = document.querySelector('input');
-    let button = document.querySelector('button');
-    let div = document.querySelector('div');
+    <div id="chat-page" class="hidden">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2>Spring WebSocket Chat Demo</h2>
+            </div>
+            <div class="connecting">
+                Connecting...
+            </div>
+            <ul id="messageArea">
 
-    //创建WebSocket('WebSocket服务器地址')
-    let socket = new WebSocket('ws://echo.websocket.org');
-    //监听WebSocket事件 open和WebSocket服务器连接成功触发
-    socket.addEventListener('open',()=>{
-        div.innerHTML = '连接成功';
-    });
+            </ul>
+            <form id="messageForm" name="messageForm">
+                <div class="form-group">
+                    <div class="input-group clearfix">
+                        <input type="text" id="message" placeholder="Type a message..." autocomplete="off" class="form-control"/>
+                        <button type="submit" class="primary">Send</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    //给webSocket发送消息
-    button.addEventListener('click',()=>{
-        let value = input.value;
-        socket.send(value);
-    });
-
-    //接受websocket服务的消息
-    socket.addEventListener('message',(msg)=>{
-        console.log(msg.data);
-        //把消息显示到div
-        div.innerHTML = msg.data;
-    });
-    //端口服务
-    socket.addEventListener('close',()=>{
-        console.log('服务断开');
-    });
-</script>
-</body>
+    <script src="https://cdn.bootcss.com/sockjs-client/1.1.4/sockjs.min.js"></script>
+    <script src="https://cdn.bootcss.com/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="/js/main.js"></script>
+  </body>
 </html>

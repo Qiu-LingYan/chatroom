@@ -29,7 +29,7 @@
                         var str = "";
                         if(talkWords.value == "") {
                             
-                            alert("消息不能为空");
+                            alert("消息不能为空。。。");
                             return;
                         }
                         if(Who.value == 0) {

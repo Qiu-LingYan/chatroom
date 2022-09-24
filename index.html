@@ -1,0 +1,16 @@
+<div class="mainIm">
+        <div>
+            <ul class="mainBox">
+            </ul>
+            <ul class="messageBox">
+            </ul>
+        </div>
+        <div class="online" style="display:none;">
+            <input type="text" id="txtContents" placeholder="输入要发送的内容" />
+            <input type="button" value="发送" onclick="sendMsg()" /><input type="button" value="断开连接" onclick="offLine()" />
+        </div>
+        <div class="offline">
+            <input type="text" id="txtUserName" placeholder="请输入一个用户名" />
+            <input type="button" value="连接" onclick="initIm()" />
+        </div>
+    </div>

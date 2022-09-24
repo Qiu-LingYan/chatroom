@@ -1,22 +1,92 @@
-<div class="talk_con">
-            <h1>欢迎进入聊天室！</h1>
-            <div class="talk_show" id="words">
-                <div class="atalk"><span id="asay">吃饭了吗？</span>
-                    <img src="img/a.jpg" />
-                    <p>小哥哥</p>
-                </div>
-                <div class="btalk"><span id="bsay">还没呢，你呢？</span>
-                    <img src="img/b.jpg" />
-                    <p>小姐姐</p>
-                </div>
-            </div>
-            <div class="talk_input">
-                <select class="whotalk" id="who">
- 
-                    <option value="0">小哥哥说：</option>
-                    <option value="1">小姐姐说：</option>
-                </select>
-                <textarea class="talk_word" id="talkwords"></textarea>
-                <input type="button" value="发送" class="talk_sub" id="talksub">
-            </div>
-        </div>
+private async Task WebSocketContext(AspNetWebSocketContext context)
+        {
+            try
+            {
+                WebSocket socket = context.WebSocket;
+
+                //获取连接信息
+                string user_name = TDCMS.Common.TD_Request.GetQueryStringValue("user_name", "");
+
+                //第一次open时，添加到连接池中
+                if (_userPool.Find(c => c.User_name== user_name) == null)
+                {
+                    _userPool.Add(new UserPool() {  User_name = user_name , Socket = socket });
+                }
+                else
+                {
+                    UserPool p = _userPool.Find(c => c.User_name == user_name);
+                    if (socket != p.Socket)//当前对象不一致，更新
+                    {
+                        p.Socket = socket;
+                    }
+                }
+
+                UserPool sourcePool= _userPool.Find(c => c.User_name == user_name);//获取到发送者连接池
+
+                #region 对所有连接池中广播 我上线了
+                foreach (var item in _userPool)
+                {
+                    MessageModel model = new MessageModel()
+                    {
+                        Aim = item.User_name,
+                        Contents = user_name + "上线了",
+                        Source = sourcePool.User_name,
+                        Status = 1
+                    };
+                    await item.Socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonHelper.ObjectToJson(model))), WebSocketMessageType.Text, true, CancellationToken.None);
+                }
+                #endregion
+
+                bool isNext = true;
+                while (isNext)
+                {
+                    if (socket.State == WebSocketState.Open)
+                    {
+                        ArraySegment<byte> buffer = new ArraySegment<byte>(new byte[2048]);
+                        WebSocketReceiveResult result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+
+                        #region 关闭Socket处理，删除连接池
+                        if (socket.State != WebSocketState.Open)//连接关闭
+                        {
+                            if (_userPool.Find(c => c.User_name == user_name) != null)
+                                _userPool.Remove(_userPool.Find(c => c.User_name == user_name));//删除连接池
+                            //广播当前在线的用户 我下线了
+                            foreach (var item in _userPool)
+                            {
+                                MessageModel offline = new MessageModel()
+                                {
+                                    Aim = item.User_name,
+                                    Contents = user_name + "下线了",
+                                    Source = sourcePool.User_name,
+                                    Status = 1
+                                };
+                                await item.Socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonHelper.ObjectToJson(offline))), WebSocketMessageType.Text, true, CancellationToken.None);
+                            }
+                            break;
+                        }
+
+                        #endregion
+
+                        #region 如果连接没有关闭，处理发送过来的消息
+
+                        MessageModel model=new MessageModel();
+                        int messageCount = result.Count;
+                        string messageStr= Encoding.UTF8.GetString(buffer.Array, 0, messageCount);
+                        model = JsonHelper.JsonToObject<MessageModel>(messageStr);//这个是解析好的 消息
+
+                        //发送消息到每个客户端
+                        foreach (var item in _userPool)
+                        {
+                            await item.Socket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonHelper.ObjectToJson(model))), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+
+                        #endregion
+                    }
+                }
+
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+        }
